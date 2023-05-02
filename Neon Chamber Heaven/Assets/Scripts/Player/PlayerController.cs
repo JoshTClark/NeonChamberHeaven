@@ -22,6 +22,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private LayerMask groundMask;
 
+    [Header("Bullet Prefab")]
+    [SerializeField]
+    private PlayerBulletController bulletPrefab;
+
+    [Header("Bullet Visual Starting Point")]
+    [SerializeField]
+    private GameObject bulletStart;
 
     [Header("Movement Values")]
     [SerializeField]
@@ -65,6 +72,7 @@ public class PlayerController : MonoBehaviour
     {
         UpdateLookDirection();
         UpdateMovement();
+        UpdateGun();
     }
 
     /// <summary>
@@ -94,9 +102,11 @@ public class PlayerController : MonoBehaviour
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
         jumpHeld = input.CharacterControls.Jump.ReadValue<float>() != 0f;
 
+        // Normal movement - has no acceleration
         Vector2 movementInput = input.CharacterControls.Move.ReadValue<Vector2>() * speed * Time.deltaTime;
         Vector3 movementResult = movementInput.x * transform.right + movementInput.y * transform.forward;
 
+        // Gravity
         velocity.y += gravity * Time.deltaTime;
 
         // If jump is held clamp falling speed
@@ -105,11 +115,13 @@ public class PlayerController : MonoBehaviour
             velocity.y = Mathf.Clamp(velocity.y, slowFallSpeed, float.MaxValue);
         }
 
+        // Jump
         if (input.CharacterControls.Jump.WasPressedThisFrame() && isGrounded)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
+        // Grounded check
         if (isGrounded && velocity.y < 0)
         {
             velocity.y = -2;
@@ -117,5 +129,24 @@ public class PlayerController : MonoBehaviour
 
         controller.Move(movementResult);
         controller.Move(velocity * Time.deltaTime);
+    }
+
+    private void UpdateGun()
+    {
+        // The player pressed shoot
+        if (input.CharacterControls.Shoot.WasPressedThisFrame())
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, 100f))
+            {
+                PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
+                bullet.DoBulletShot(bulletStart.transform.position, hit.point, 5, Vector3.Reflect(playerCamera.transform.forward, hit.normal), hit.normal);
+            }
+            else 
+            {
+                PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
+                bullet.DoBulletShot(bulletStart.transform.position, bulletStart.transform.position + (playerCamera.transform.forward * 100f));
+            }
+        }
     }
 }
