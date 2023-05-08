@@ -5,6 +5,9 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
+    [SerializeField, Header("Player Stats Holder")]
+    private PlayerStats stats;
+
     [SerializeField, Header("Control Options")]
     private Vector2 lookSensitvity;
 
@@ -32,13 +35,15 @@ public class PlayerController : MonoBehaviour
 
     [Header("Movement Values")]
     [SerializeField]
-    private float speed;
-    [SerializeField]
     private float gravity;
     [SerializeField]
-    private float jumpHeight;
-    [SerializeField]
     private float slowFallSpeed;
+    [SerializeField]
+    private float maxFallSpeed;
+    [SerializeField]
+    private float dashSpeed;
+    [SerializeField]
+    private float dashActiveTime;
 
     // Controls input
     private GameControls input;
@@ -49,9 +54,20 @@ public class PlayerController : MonoBehaviour
     // Current velocity
     private Vector3 velocity;
 
+    // The last recorded direction the player was moving
+    private Vector2 movementInput;
+    private Vector3 movementResult;
+
+    // Timers
+    private float reloadTimer, fireRateTimer, dashActiveTimer;
+
     // Flags
-    private bool isGrounded;
-    private bool jumpHeld;
+    public bool isGrounded;
+    public bool jumpHeld;
+    public bool isSlamming;
+    public bool isDashing;
+    public bool isReloading;
+    public bool isFireRateCooldown;
 
     private void Start()
     {
@@ -68,7 +84,7 @@ public class PlayerController : MonoBehaviour
         isGrounded = false;
     }
 
-    public void Update()
+    private void Update()
     {
         UpdateLookDirection();
         UpdateMovement();
@@ -103,50 +119,145 @@ public class PlayerController : MonoBehaviour
         jumpHeld = input.CharacterControls.Jump.ReadValue<float>() != 0f;
 
         // Normal movement - has no acceleration
-        Vector2 movementInput = input.CharacterControls.Move.ReadValue<Vector2>() * speed * Time.deltaTime;
-        Vector3 movementResult = movementInput.x * transform.right + movementInput.y * transform.forward;
+        if (!isDashing)
+        {
+            movementInput = input.CharacterControls.Move.ReadValue<Vector2>() * stats.Speed;
+            movementResult = movementInput.x * transform.right + movementInput.y * transform.forward;
+        }
 
         // Gravity
         velocity.y += gravity * Time.deltaTime;
 
         // If jump is held clamp falling speed
-        if (jumpHeld)
+        if (((jumpHeld && !isSlamming) || (input.CharacterControls.Jump.WasPressedThisFrame() && isSlamming)) && !isDashing && !isGrounded)
         {
             velocity.y = Mathf.Clamp(velocity.y, slowFallSpeed, float.MaxValue);
+            isSlamming = false;
+            if (velocity.y < 0)
+            {
+                stats.Stamina -= (stats.FloatStaminaCost * Time.deltaTime);
+            }
         }
 
         // Jump
         if (input.CharacterControls.Jump.WasPressedThisFrame() && isGrounded)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            velocity.y = Mathf.Sqrt(stats.JumpHeight * -2f * gravity);
+        }
+
+        // Slam
+        if (input.CharacterControls.Slam.WasPressedThisFrame() && !isGrounded && !isSlamming && stats.Stamina >= stats.SlamStaminaCost)
+        {
+            stats.Stamina -= stats.SlamStaminaCost;
+            velocity.y = maxFallSpeed;
+            movementInput *= 0.5f;
+            isSlamming = true;
+            if (isDashing)
+            {
+                isDashing = false;
+                dashActiveTimer = 0.0f;
+            }
         }
 
         // Grounded check
         if (isGrounded && velocity.y < 0)
         {
+            isSlamming = false;
             velocity.y = -2;
         }
 
-        controller.Move(movementResult);
+        // Dashing movement
+        if (input.CharacterControls.Dash.WasPressedThisFrame() && !isDashing && stats.Stamina >= stats.DashStaminaCost)
+        {
+            stats.Stamina -= stats.DashStaminaCost;
+            isDashing = true;
+            movementInput = input.CharacterControls.Move.ReadValue<Vector2>() * dashSpeed;
+            movementResult = movementInput.x * transform.right + movementInput.y * transform.forward;
+        }
+        else if (isDashing)
+        {
+            velocity.y = 0f;
+            dashActiveTimer += Time.deltaTime;
+            if (dashActiveTimer >= dashActiveTime)
+            {
+                isDashing = false;
+                dashActiveTimer = 0.0f;
+            }
+        }
+
+        velocity.y = Mathf.Clamp(velocity.y, maxFallSpeed, float.MaxValue);
+
+        controller.Move(movementResult * Time.deltaTime);
         controller.Move(velocity * Time.deltaTime);
     }
 
+    /// <summary>
+    /// Updates shooting, reload time, fire rate
+    /// </summary>
     private void UpdateGun()
     {
-        // The player pressed shoot
-        if (input.CharacterControls.Shoot.WasPressedThisFrame())
+        // Reloading
+        if (isReloading)
         {
-            RaycastHit hit;
-            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, 100f))
+            reloadTimer -= Time.deltaTime;
+            if (reloadTimer <= 0)
             {
-                PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
-                bullet.DoBulletShot(bulletStart.transform.position, hit.point, 5, Vector3.Reflect(playerCamera.transform.forward, hit.normal), hit.normal);
-            }
-            else 
-            {
-                PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
-                bullet.DoBulletShot(bulletStart.transform.position, bulletStart.transform.position + (playerCamera.transform.forward * 100f));
+                isReloading = false;
+                stats.CurrentAmmo = stats.MaxAmmo;
             }
         }
+
+        // Fire rate
+        if (isFireRateCooldown)
+        {
+            fireRateTimer -= Time.deltaTime;
+            if (fireRateTimer <= 0)
+            {
+                isFireRateCooldown = false;
+            }
+        }
+
+        // If is neither reloading or on cooldown the player can shoot
+        if (!isReloading && !isFireRateCooldown)
+        {
+            // The player pressed shoot
+            if (input.CharacterControls.Shoot.WasPressedThisFrame())
+            {
+                this.gameObject.GetComponent<Animator>().SetTrigger("Shoot");
+                this.gameObject.GetComponent<Animator>().SetFloat("GunShootSpeed", 1f / stats.FireRate);
+
+                isFireRateCooldown = true;
+                fireRateTimer = stats.FireRate;
+                stats.CurrentAmmo--;
+
+                if (stats.CurrentAmmo <= 0)
+                {
+                    reloadTimer = stats.ReloadSpeed;
+                    isReloading = true;
+                }
+
+                RaycastHit hit;
+                if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, 100f, LayerMask.GetMask("Wall")))
+                {
+                    PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
+                    bullet.DoBulletShot(bulletStart.transform.position, hit.point, 5, Vector3.Reflect(playerCamera.transform.forward, hit.normal), hit.normal);
+                }
+                else
+                {
+                    PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
+                    bullet.DoBulletShot(bulletStart.transform.position, bulletStart.transform.position + (playerCamera.transform.forward * 100f));
+                }
+            }
+        }
+    }
+
+    public float GetPercentDoneReloading()
+    {
+        return reloadTimer / stats.ReloadSpeed;
+    }
+
+    public float GetPercentStaminaRemaining()
+    {
+        return stats.Stamina / stats.MaxStamina;
     }
 }

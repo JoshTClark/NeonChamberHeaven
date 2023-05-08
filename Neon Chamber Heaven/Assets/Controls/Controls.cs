@@ -64,7 +64,7 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Crouch"",
+                    ""name"": ""Slam"",
                     ""type"": ""Button"",
                     ""id"": ""f27617d0-2ee4-4824-a2fb-68b93f572101"",
                     ""expectedControlType"": ""Button"",
@@ -178,7 +178,7 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Crouch"",
+                    ""action"": ""Slam"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -204,7 +204,7 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
         m_CharacterControls_Move = m_CharacterControls.FindAction("Move", throwIfNotFound: true);
         m_CharacterControls_Jump = m_CharacterControls.FindAction("Jump", throwIfNotFound: true);
         m_CharacterControls_Dash = m_CharacterControls.FindAction("Dash", throwIfNotFound: true);
-        m_CharacterControls_Crouch = m_CharacterControls.FindAction("Crouch", throwIfNotFound: true);
+        m_CharacterControls_Slam = m_CharacterControls.FindAction("Slam", throwIfNotFound: true);
         m_CharacterControls_Shoot = m_CharacterControls.FindAction("Shoot", throwIfNotFound: true);
     }
 
@@ -269,7 +269,7 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
     private readonly InputAction m_CharacterControls_Move;
     private readonly InputAction m_CharacterControls_Jump;
     private readonly InputAction m_CharacterControls_Dash;
-    private readonly InputAction m_CharacterControls_Crouch;
+    private readonly InputAction m_CharacterControls_Slam;
     private readonly InputAction m_CharacterControls_Shoot;
     public struct CharacterControlsActions
     {
@@ -279,7 +279,7 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
         public InputAction @Move => m_Wrapper.m_CharacterControls_Move;
         public InputAction @Jump => m_Wrapper.m_CharacterControls_Jump;
         public InputAction @Dash => m_Wrapper.m_CharacterControls_Dash;
-        public InputAction @Crouch => m_Wrapper.m_CharacterControls_Crouch;
+        public InputAction @Slam => m_Wrapper.m_CharacterControls_Slam;
         public InputAction @Shoot => m_Wrapper.m_CharacterControls_Shoot;
         public InputActionMap Get() { return m_Wrapper.m_CharacterControls; }
         public void Enable() { Get().Enable(); }
@@ -302,9 +302,9 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
                 @Dash.started -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnDash;
                 @Dash.performed -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnDash;
                 @Dash.canceled -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnDash;
-                @Crouch.started -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnCrouch;
-                @Crouch.performed -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnCrouch;
-                @Crouch.canceled -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnCrouch;
+                @Slam.started -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnSlam;
+                @Slam.performed -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnSlam;
+                @Slam.canceled -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnSlam;
                 @Shoot.started -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnShoot;
                 @Shoot.performed -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnShoot;
                 @Shoot.canceled -= m_Wrapper.m_CharacterControlsActionsCallbackInterface.OnShoot;
@@ -324,9 +324,9 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
                 @Dash.started += instance.OnDash;
                 @Dash.performed += instance.OnDash;
                 @Dash.canceled += instance.OnDash;
-                @Crouch.started += instance.OnCrouch;
-                @Crouch.performed += instance.OnCrouch;
-                @Crouch.canceled += instance.OnCrouch;
+                @Slam.started += instance.OnSlam;
+                @Slam.performed += instance.OnSlam;
+                @Slam.canceled += instance.OnSlam;
                 @Shoot.started += instance.OnShoot;
                 @Shoot.performed += instance.OnShoot;
                 @Shoot.canceled += instance.OnShoot;
@@ -340,7 +340,7 @@ public partial class @GameControls : IInputActionCollection2, IDisposable
         void OnMove(InputAction.CallbackContext context);
         void OnJump(InputAction.CallbackContext context);
         void OnDash(InputAction.CallbackContext context);
-        void OnCrouch(InputAction.CallbackContext context);
+        void OnSlam(InputAction.CallbackContext context);
         void OnShoot(InputAction.CallbackContext context);
     }
 }

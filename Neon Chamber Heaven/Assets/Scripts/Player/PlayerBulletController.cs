@@ -58,7 +58,7 @@ public class PlayerBulletController : MonoBehaviour
             if (bounces > 0)
             {
                 RaycastHit hit;
-                if (Physics.Raycast(endPos, reflectionDirection, out hit, 100f))
+                if (Physics.Raycast(endPos, reflectionDirection, out hit, 100f, LayerMask.GetMask("Wall")))
                 {
                     PlayerBulletController bullet = GameObject.Instantiate(selfPrefab);
                     bullet.DoBulletShot(endPos, hit.point, bounces - 1, Vector3.Reflect(reflectionDirection, hit.normal), hit.normal);
