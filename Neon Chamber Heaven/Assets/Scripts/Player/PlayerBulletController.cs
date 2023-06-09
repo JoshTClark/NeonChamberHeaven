@@ -8,9 +8,11 @@ public class PlayerBulletController : MonoBehaviour
     [SerializeField]
     private LineRenderer lineRenderer;
 
-    [Header("Hit Effect")]
+    [Header("Hit Effects")]
     [SerializeField]
-    private ParticleSystem hitEffect;
+    private ParticleSystem wallHitEffect;
+    [SerializeField]
+    private ParticleSystem enemyBloodEffect;
 
     [Header("Animation Values")]
     [SerializeField]
@@ -57,17 +59,8 @@ public class PlayerBulletController : MonoBehaviour
             doneBounce = true;
             if (bounces > 0)
             {
-                RaycastHit hit;
-                if (Physics.Raycast(endPos, reflectionDirection, out hit, 100f, LayerMask.GetMask("Wall")))
-                {
-                    PlayerBulletController bullet = GameObject.Instantiate(selfPrefab);
-                    bullet.DoBulletShot(endPos, hit.point, bounces - 1, Vector3.Reflect(reflectionDirection, hit.normal), hit.normal);
-                }
-                else
-                {
-                    PlayerBulletController bullet = GameObject.Instantiate(selfPrefab);
-                    bullet.DoBulletShot(endPos, startPos + (reflectionDirection * 100f));
-                }
+                PlayerBulletController bullet = GameObject.Instantiate(selfPrefab);
+                bullet.DoBulletShot(endPos, reflectionDirection, bounces - 1);
             }
         }
 
@@ -77,20 +70,49 @@ public class PlayerBulletController : MonoBehaviour
         }
     }
 
-    public void DoBulletShot(Vector3 start, Vector3 end, int bounces, Vector3 reflection, Vector3 normal)
+    public void DoBulletShot(Vector3 start, Vector3 direction, int bounces)
     {
-        this.bounces = bounces;
         startPos = start;
-        endPos = end;
-        lineRenderer.SetPosition(0, start);
-        lineRenderer.SetPosition(1, end);
-        reflectionDirection = reflection;
-        hitEffect.gameObject.transform.position = end;
-        hitEffect.gameObject.transform.localRotation = Quaternion.Euler(normal);
+        this.bounces = bounces;
+
+        RaycastHit hit;
+        if (Physics.Raycast(startPos, direction, out hit, 100f, LayerMask.GetMask("Wall", "Enemy")))
+        {
+            endPos = hit.point;
+            lineRenderer.SetPosition(0, start);
+            lineRenderer.SetPosition(1, endPos);
+            reflectionDirection = Vector3.Reflect(direction, hit.normal);
+            if (hit.transform.gameObject.GetComponent<EnemyController>())
+            {
+                this.bounces = 0;
+                wallHitEffect.gameObject.SetActive(false);
+                enemyBloodEffect.gameObject.SetActive(true);
+                enemyBloodEffect.gameObject.transform.position = endPos;
+                enemyBloodEffect.gameObject.transform.localRotation = Quaternion.Euler(hit.normal);
+            }
+            else
+            {
+                wallHitEffect.gameObject.SetActive(true);
+                enemyBloodEffect.gameObject.SetActive(false);
+                wallHitEffect.gameObject.transform.position = endPos;
+                wallHitEffect.gameObject.transform.localRotation = Quaternion.Euler(hit.normal);
+            }
+        }
+        else
+        {
+            endPos = start + (direction * 100f);
+            lineRenderer.SetPosition(0, start);
+            lineRenderer.SetPosition(1, endPos);
+            reflectionDirection = new Vector3(0, 0, 0);
+            wallHitEffect.gameObject.transform.position = endPos;
+            wallHitEffect.gameObject.transform.localRotation = Quaternion.Euler(hit.normal);
+            this.bounces = 0;
+        }
     }
 
-    public void DoBulletShot(Vector3 start, Vector3 end)
+    public void DoBulletShot(Vector3 start, Vector3 direction, int bounces, Vector3 visualStart)
     {
-        DoBulletShot(start, end, 0, Vector3.zero, Vector3.zero);
+        DoBulletShot(start, direction, bounces);
+        lineRenderer.SetPosition(0, visualStart);
     }
 }

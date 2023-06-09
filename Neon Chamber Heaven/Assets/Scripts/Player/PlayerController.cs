@@ -236,17 +236,8 @@ public class PlayerController : MonoBehaviour
                     isReloading = true;
                 }
 
-                RaycastHit hit;
-                if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, 100f, LayerMask.GetMask("Wall")))
-                {
-                    PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
-                    bullet.DoBulletShot(bulletStart.transform.position, hit.point, 5, Vector3.Reflect(playerCamera.transform.forward, hit.normal), hit.normal);
-                }
-                else
-                {
-                    PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
-                    bullet.DoBulletShot(bulletStart.transform.position, bulletStart.transform.position + (playerCamera.transform.forward * 100f));
-                }
+                PlayerBulletController bullet = GameObject.Instantiate(bulletPrefab);
+                bullet.DoBulletShot(playerCamera.transform.position, playerCamera.transform.forward, 2, bulletStart.transform.position);
             }
         }
     }
